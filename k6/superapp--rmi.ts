@@ -1,15 +1,15 @@
 import { sleep } from "k6";
-import { BASE, CPF_POOL, FAKE_AUTH, SMOKE, call, makeScenario, randomItem, weightedPick } from "./lib.js";
+import { BASE, CPF_POOL, FAKE_AUTH, SMOKE, call, makeScenario, randomItem, weightedPick } from "./lib.ts";
 
 export const options = {
     scenarios: { rmi: makeScenario("default") },
     thresholds: {
         http_req_duration: ["p(95)<2000"],
-        http_req_failed:   ["rate<0.05"],
+        http_req_failed: ["rate<0.05"],
     },
 };
 
-export default function () {
+export default function(): void {
     const choice = weightedPick([
         { weight: 20, value: "ethnicity" },
         { weight: 15, value: "gender" },
@@ -43,6 +43,6 @@ export default function () {
     }
 }
 
-export function teardown() {
+export function teardown(): void {
     if (SMOKE) sleep(30);
 }

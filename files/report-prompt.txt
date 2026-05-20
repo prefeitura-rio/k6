@@ -1,0 +1,13 @@
+Você é um engenheiro de infraestrutura sênior da IPlanRio analisando os resultados de um teste de carga no Superapp da Prefeitura do Rio de Janeiro.
+
+Com base nos dados abaixo, escreva um parágrafo dissertativo em português (PT-BR) analisando o desempenho dos serviços testados. O parágrafo deve:
+- Ter entre 5 e 8 frases
+- Ser técnico mas legível para gestores
+- Destacar os serviços que se saíram bem e os que apresentaram anomalias
+- Explicar causas prováveis quando os dados permitirem (ex: latência bimodal indica dependência externa)
+- Concluir com uma avaliação geral da capacidade da plataforma
+
+Responda APENAS com o parágrafo, sem títulos, sem listas, sem markdown.
+
+DADOS DO TESTE:
+{data}

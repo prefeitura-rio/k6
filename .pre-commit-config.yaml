@@ -1,0 +1,37 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-lint
+        name: ruff lint
+        language: system
+        entry: ruff check
+        types: [python]
+        files: ^scripts/
+
+      - id: ruff-format
+        name: ruff format
+        language: system
+        entry: ruff format --check
+        types: [python]
+        files: ^scripts/
+
+      - id: basedpyright
+        name: basedpyright
+        language: system
+        entry: basedpyright scripts/
+        types: [python]
+        files: ^scripts/
+        pass_filenames: false
+
+      - id: tsc
+        name: typescript type check
+        language: system
+        entry: tsc --noEmit
+        files: \.(ts)$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier format check
+        language: system
+        entry: prettier --check
+        files: \.(ts)$

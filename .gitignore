@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .direnv/
 result
+node_modules
+scripts/pyrightconfig.json
+.venv/
+reports/*.md

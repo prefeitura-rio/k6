@@ -9,7 +9,7 @@ spec:
   script:
     configMap:
       name: ${testrun}
-      file: load-test.js
+      file: ${script_file}
   arguments: ${arguments}
   runner:
     image: ${image}

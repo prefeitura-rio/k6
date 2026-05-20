@@ -1,0 +1,103 @@
+queries:
+  totals:
+    group_by: scenario
+    columns:
+      scenario: str
+      total_reqs: int
+      avg_ms: float
+      max_ms: float
+    sql: |
+      WITH last AS (
+        SELECT fingerprint, metric_name, argMax(value, unix_milli) AS val
+        FROM signoz_metrics.distributed_samples_v4
+        WHERE metric_name IN (
+          'k6_http_reqs',
+          'k6_http_req_duration.count',
+          'k6_http_req_duration.sum',
+          'k6_http_req_duration.max'
+        )
+        GROUP BY fingerprint, metric_name
+      )
+      SELECT
+        JSONExtractString(ts.labels, 'scenario') AS scenario,
+        sumIf(val, metric_name = 'k6_http_reqs') AS total_reqs,
+        round(
+          sumIf(val, metric_name = 'k6_http_req_duration.sum') /
+          nullIf(sumIf(val, metric_name = 'k6_http_req_duration.count'), 0),
+          1
+        ) AS avg_ms,
+        round(maxIf(val, metric_name = 'k6_http_req_duration.max'), 1) AS max_ms
+      FROM last
+      JOIN signoz_metrics.distributed_time_series_v4 ts USING (fingerprint)
+      WHERE JSONExtractString(ts.labels, 'testrun') = '{testrun}'
+        AND JSONExtractString(ts.labels, 'scenario') != ''
+      GROUP BY scenario
+      ORDER BY scenario
+      FORMAT JSONEachRow
+
+  distribution:
+    group_by: scenario
+    columns:
+      scenario: str
+      pct_25ms: float
+      pct_100ms: float
+      pct_500ms: float
+      pct_1s: float
+    sql: |
+      WITH last AS (
+        SELECT fingerprint, argMax(value, unix_milli) AS val
+        FROM signoz_metrics.distributed_samples_v4
+        WHERE metric_name = 'k6_http_req_duration.bucket'
+        GROUP BY fingerprint
+      )
+      SELECT
+        JSONExtractString(ts.labels, 'scenario') AS scenario,
+        round(
+          sumIf(val, JSONExtractString(ts.labels, 'le') = '25') /
+          nullIf(sumIf(val, JSONExtractString(ts.labels, 'le') = '+Inf'), 0) * 100,
+          1
+        ) AS pct_25ms,
+        round(
+          sumIf(val, JSONExtractString(ts.labels, 'le') = '100') /
+          nullIf(sumIf(val, JSONExtractString(ts.labels, 'le') = '+Inf'), 0) * 100,
+          1
+        ) AS pct_100ms,
+        round(
+          sumIf(val, JSONExtractString(ts.labels, 'le') = '500') /
+          nullIf(sumIf(val, JSONExtractString(ts.labels, 'le') = '+Inf'), 0) * 100,
+          1
+        ) AS pct_500ms,
+        round(
+          sumIf(val, JSONExtractString(ts.labels, 'le') = '1000') /
+          nullIf(sumIf(val, JSONExtractString(ts.labels, 'le') = '+Inf'), 0) * 100,
+          1
+        ) AS pct_1s
+      FROM last
+      JOIN signoz_metrics.distributed_time_series_v4 ts USING (fingerprint)
+      WHERE metric_name = 'k6_http_req_duration.bucket'
+        AND JSONExtractString(ts.labels, 'testrun') = '{testrun}'
+        AND JSONExtractString(ts.labels, 'scenario') != ''
+      GROUP BY scenario
+      ORDER BY scenario
+      FORMAT JSONEachRow
+
+  window:
+    group_by: null
+    columns:
+      started_at: str
+      ended_at: str
+      elapsed_min: int
+    sql: |
+      SELECT
+        min(toDateTime(intDiv(unix_milli, 1000))) AS started_at,
+        max(toDateTime(intDiv(unix_milli, 1000))) AS ended_at,
+        dateDiff(
+          'minute',
+          min(toDateTime(intDiv(unix_milli, 1000))),
+          max(toDateTime(intDiv(unix_milli, 1000)))
+        ) AS elapsed_min
+      FROM signoz_metrics.distributed_samples_v4 s
+      JOIN signoz_metrics.distributed_time_series_v4 ts USING (fingerprint)
+      WHERE metric_name = 'k6_http_reqs'
+        AND JSONExtractString(ts.labels, 'testrun') = '{testrun}'
+      FORMAT JSONEachRow

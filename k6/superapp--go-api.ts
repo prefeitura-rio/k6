@@ -1,37 +1,36 @@
 import http from "k6/http";
 import { sleep } from "k6";
-import { BASE, FAKE_AUTH, SMOKE, call, makeScenario, randomItem, weightedPick } from "./lib.js";
+import { BASE, FAKE_AUTH, SMOKE, call, makeScenario, randomItem, weightedPick } from "./lib.ts";
 
-http.setResponseCallback(http.expectedStatuses(
-    { min: 200, max: 302 }, 401, 403, 404
-));
+http.setResponseCallback(http.expectedStatuses({ min: 200, max: 302 }, 401, 403, 404));
 
 export const options = {
     scenarios: { go_api: makeScenario("default") },
     thresholds: {
         http_req_duration: ["p(95)<2000"],
-        http_req_failed:   ["rate<0.05"],
+        http_req_failed: ["rate<0.05"],
     },
 };
 
-export function setup() {
-    const vagaIds = [];
-    const res = http.get(
-        `${BASE.go}/api/public/empregabilidade/vagas`,
-        { tags: { service: "go_setup" } }
-    );
+type SetupData = { vagaIds: string[] };
+
+export function setup(): SetupData {
+    const vagaIds: string[] = [];
+    const res = http.get(`${BASE.go}/api/public/empregabilidade/vagas`, {
+        tags: { service: "go_setup" },
+    });
     if (res.status === 200) {
         try {
-            const body = JSON.parse(res.body);
-            for (const v of (body.data || [])) {
+            const body = JSON.parse(res.body as string) as { data?: { id?: string }[] };
+            for (const v of body.data ?? []) {
                 if (v.id) vagaIds.push(v.id);
             }
-        } catch (_) { }
+        } catch { }
     }
     return { vagaIds };
 }
 
-export default function (data) {
+export default function(data: SetupData): void {
     const choice = weightedPick([
         { weight: 25, value: "public_vagas" },
         { weight: 15, value: "public_vaga_id" },
@@ -47,7 +46,7 @@ export default function (data) {
             call("go_api", "GET", `${base}/api/public/empregabilidade/vagas`);
             break;
         case "public_vaga_id": {
-            const ids = data && data.vagaIds && data.vagaIds.length > 0 ? data.vagaIds : null;
+            const ids = data.vagaIds.length > 0 ? data.vagaIds : null;
             if (ids) {
                 call("go_api", "GET", `${base}/api/public/empregabilidade/vagas/${randomItem(ids)}`);
             } else {
@@ -67,6 +66,6 @@ export default function (data) {
     }
 }
 
-export function teardown() {
+export function teardown(): void {
     if (SMOKE) sleep(30);
 }

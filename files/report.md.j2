@@ -1,0 +1,69 @@
+# {{ script_file }}
+
+**Data:** {{ date }}
+**Preparado por:** Time de Infraestrutura — IPlanRio
+**Classificação:** Interno
+
+---
+
+## 1. Parâmetros do Teste
+
+| Parâmetro | Valor |
+| --- | --- |
+| Identificador | `{{ testrun }}` |
+| Ambiente | {{ env_label }} |
+| Início | {{ started_at }} UTC |
+| Término | {{ ended_at }} UTC |
+| Duração total | {{ elapsed_min }} minutos |
+| Meta de RPS | {{ target_rps }} req/s total |
+| Fase de aquecimento | 2 minutos |
+| Fase sustentada | {{ sustained_duration_label }} |
+| Usuários únicos simulados | {{ cpf_pool_size }} CPFs |
+| Ferramenta | k6 v2.0.0 com k6 Operator |
+
+---
+
+## 2. Resultados por Serviço
+
+### 2.1 Visão Geral
+
+| Serviço | Requisições | Erros | Taxa de Erro |
+| --- | --- | --- | --- |
+{%- for m in metrics %}
+| {{ m.label }} | {{ "{:,}".format(m.total_reqs) }} | N/D | N/D |
+{%- endfor %}
+| **Total** | **{{ "{:,}".format(total_reqs) }}** | **N/D** | **N/D** |
+
+### 2.2 Latência
+
+| Serviço | Avg | Máx | < 25ms | < 100ms | < 500ms | < 1s |
+| --- | --- | --- | --- | --- | --- | --- |
+{%- for m in metrics %}
+| {{ m.label }} | {{ "%.0f"|format(m.avg_ms) }}ms | {{ "%.0f"|format(m.max_ms) }}ms | {{ m.pct_25ms }}% | {{ m.pct_100ms }}% | {{ m.pct_500ms }}% | {{ m.pct_1s }}% {{ "✅" if m.pct_1s == 100 else "⚠️" }} |
+{%- endfor %}
+
+---
+
+## 3. Conclusão
+
+| Serviço | Resultado |
+| --- | --- |
+{%- for m in metrics %}
+| {{ m.label }} | {{ "✅ Aprovado" if m.pct_1s == 100 else "⚠️ Condicional" }} |
+{%- endfor %}
+
+---
+
+## 4. Análise
+
+{%- if interpretation %}
+
+{{ interpretation }}
+{%- else %}
+
+_Interpretação não disponível — opencode não encontrado._
+{%- endif %}
+
+---
+
+_Relatório gerado automaticamente com base nos dados coletados pelo k6 e armazenados no ClickHouse/SigNoz durante a execução do teste `{{ testrun }}`._

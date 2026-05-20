@@ -1,0 +1,11 @@
+{
+  "superapp": {
+    "staging": "gke_rj-superapp-staging_us-central1_application",
+    "prod": "gke_rj-superapp_us-central1_application"
+  },
+  "civitas": {
+    "prod": "gke_rj-civitas_us-central1_civitas-cluster",
+    "dev": "gke_rj-civitas-dev_us-central1_civitas-cluster"
+  },
+  "iplanrio": "gke_rj-iplanrio-dia_us-central1_iplanrio-infra"
+}

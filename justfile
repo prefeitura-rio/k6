@@ -1,71 +1,76 @@
 set quiet
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-error     := '\033[31m[✗]\033[0m'
-context   := "gke_rj-superapp-staging_us-central1_application"
+error := '\033[31m[✗]\033[0m'
+env_name := env("ENV", "staging")
 namespace := "k6-operator-system"
-run_id    := `date +%Y%m%d-%H%M%S`
-
-default: run
+run_id := `date +%Y%m%d-%H%M%S`
 
 [private]
 check-deps:
     #!/usr/bin/env bash
-    command -v kubectl &>/dev/null \
-        || { echo -e "{{ error }} kubectl not found"; exit 1; }
-    kubectl config get-contexts "{{ context }}" &>/dev/null \
-        || { echo -e "{{ error }} context '{{ context }}' not found — run: just k8s"; exit 1; }
+    if ! command -v kubectl &>/dev/null; then
+        echo -e "{{ error }} kubectl not found"
+        exit 1
+    fi
 
 [private]
-check-script:
+check-scripts scripts:
     #!/usr/bin/env bash
-    [[ -f "{{ justfile_directory() }}/load-test.js" ]] \
-        || { echo -e "{{ error }} load-test.js not found"; exit 1; }
+    IFS=',' read -ra SCRIPTS <<< "{{ scripts }}"
 
-# Run a single smoke iteration (1 VU, 1 iteration per scenario) and tail logs.
-smoke: check-deps check-script
+    if [[ ${#SCRIPTS[@]} -eq 0 ]]; then
+        echo -e "{{ error }} scripts= must not be empty"
+        exit 1
+    fi
+
+    PREFIX=""
+    for script in "${SCRIPTS[@]}"; do
+        p="${script%%--*}"
+        if [[ -z "$PREFIX" ]]; then
+            PREFIX="$p"
+        elif [[ "$PREFIX" != "$p" ]]; then
+            echo -e "{{ error }} mixed prefixes: '$PREFIX' and '$p' — all scripts must share the same prefix"
+            exit 1
+        fi
+    done
+
+    context=$(python3 -m scripts.clusters "$PREFIX" "{{ env_name }}")
+
+    if ! kubectl config get-contexts "$context" &>/dev/null; then
+        echo -e "{{ error }} context '$context' not found — check your credentials"
+        exit 1
+    fi
+
+# Submit a load test and tail logs. Pass smoke=true for a single smoke iteration.
+run scripts smoke="false": check-deps (check-scripts scripts)
     #!/usr/bin/env bash
-    set -euo pipefail
-    ID="smoke-{{ run_id }}"
-    python3 -m k6.submit "$ID" --smoke
-    just tail "$ID"
+    IFS=',' read -ra SCRIPTS <<< "{{ scripts }}"
+    PREFIX="${SCRIPTS[0]%%--*}"
+    [[ "{{ smoke }}" == "true" ]] && KIND="smoke" || KIND="load-test"
+    BASE_ID="${PREFIX}--{{ env_name }}--${KIND}--{{ run_id }}"
+    python3 -m scripts.submit "$BASE_ID" "{{ scripts }}" {{ if smoke == "true" { "--smoke" } else { "" } }}
+    python3 -m scripts.tail "$BASE_ID" "{{ scripts }}"
 
-# Submit a full load test and tail logs until it finishes.
-run: check-deps check-script
+# Regenerate a combined report from a past testrun without resubmitting.
+report base_id scripts testrun="" interpret="true":
     #!/usr/bin/env bash
-    set -euo pipefail
-    ID="load-test-{{ run_id }}"
-    python3 -m k6.submit "$ID"
-    just tail "$ID"
+    TESTRUN="{{ if testrun != "" { testrun } else { base_id } }}"
+    INTERP="{{ if interpret == "true" { "" } else { "--no-interpretation" } }}"
+    ENV="{{ env_name }}" python3 -m scripts.report "{{ base_id }}" "{{ scripts }}" "$TESTRUN" $INTERP
 
-# Stream logs from a running TestRun pod until it exits.
-tail id:
-    K6_CONTEXT="{{ context }}" K6_NAMESPACE="{{ namespace }}" \
-        python3 -m k6.tail "{{ id }}"
+# Stream logs from all TestRun pods for a given base ID and scripts list.
+tail base_id scripts:
+    ENV="{{ env_name }}" python3 -m scripts.tail "{{ base_id }}" "{{ scripts }}"
 
 # List all TestRuns in the namespace.
 list:
-    kubectl --context="{{ context }}" -n "{{ namespace }}" get testruns -o wide
+    #!/usr/bin/env bash
+    context=$(python3 -m scripts.clusters "${PREFIX:-superapp}" "{{ env_name }}")
+    kubectl --context="$context" -n "{{ namespace }}" get testruns -o wide
 
 # Show the full YAML status of a TestRun.
 status id:
-    kubectl --context="{{ context }}" -n "{{ namespace }}" get testrun "{{ id }}" -o yaml
-
-# Delete a specific TestRun and its ConfigMap.
-[confirm("Delete TestRun and ConfigMap '{{id}}'?")]
-delete id:
-    kubectl --context="{{ context }}" -n "{{ namespace }}" delete testrun "{{ id }}" --ignore-not-found \
-        && kubectl --context="{{ context }}" -n "{{ namespace }}" delete configmap "{{ id }}" --ignore-not-found \
-        || true
-
-# Delete all TestRuns and ConfigMaps in the namespace.
-[confirm("Delete ALL TestRuns and ConfigMaps?")]
-clean:
-    kubectl --context="{{ context }}" -n "{{ namespace }}" delete testruns --all --ignore-not-found || true \
-        && kubectl --context="{{ context }}" -n "{{ namespace }}" get configmaps -o name \
-            | grep -v 'istio-ca-root-cert\|kube-root-ca' \
-            | xargs -r kubectl --context="{{ context }}" -n "{{ namespace }}" delete || true
-
-# Fetch GKE credentials for the staging cluster.
-k8s:
-    gcloud container clusters get-credentials application --region=us-central1 --project=rj-superapp-staging
+    #!/usr/bin/env bash
+    context=$(python3 -m scripts.clusters "${PREFIX:-superapp}" "{{ env_name }}")
+    kubectl --context="$context" -n "{{ namespace }}" get testrun "{{ id }}" -o yaml
