@@ -12,20 +12,31 @@ def validate(cfg: Config) -> None:
     if not cfg.script_path.exists():
         print(f"[✗] Script not found: {cfg.script_path}", file=sys.stderr)
         sys.exit(1)
+    if not cfg.scripts_dir.is_dir():
+        print(f"[✗] Scripts directory not found: {cfg.scripts_dir}", file=sys.stderr)
+        sys.exit(1)
     if not cfg.template_path.exists():
         print(f"[✗] Template not found: {cfg.template_path}", file=sys.stderr)
         sys.exit(1)
 
 
+def _configmap_entries(cfg: Config) -> list[str]:
+    entries = [f"load-test.js={cfg.script_path}"]
+    for f in sorted(cfg.scripts_dir.glob("*.js")):
+        entries.append(f"scripts/{f.name}={f}")
+    return entries
+
+
 def upload_configmap(cfg: Config) -> None:
     print(f"[→] Uploading ConfigMap '{cfg.testrun}'...")
+    from_file_args = [arg for entry in _configmap_entries(cfg) for arg in ("--from-file", entry)]
     dry_run = subprocess.run(
         [
             "kubectl",
             f"--context={cfg.context}",
             "-n", cfg.namespace,
             "create", "configmap", cfg.testrun,
-            f"--from-file=load-test.js={cfg.script_path}",
+            *from_file_args,
             "--dry-run=client",
             "-o", "yaml",
         ],
