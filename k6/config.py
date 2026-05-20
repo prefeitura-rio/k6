@@ -17,6 +17,7 @@ class Config:
     sustained_duration: str
     cpf_pool_size: str
     script_path: Path
+    scripts_dir: Path
     template_path: Path
 
     @classmethod
@@ -38,6 +39,7 @@ class Config:
             sustained_duration=os.environ.get("SUSTAINED_DURATION", "35m"),
             cpf_pool_size=os.environ.get("CPF_POOL_SIZE", "7500"),
             script_path=Path(os.environ.get("SCRIPT_PATH", HERE / "load-test.js")),
+            scripts_dir=Path(os.environ.get("SCRIPTS_DIR", HERE / "scripts")),
             template_path=Path(
                 os.environ.get("TEMPLATE_PATH", HERE / "testrun.yaml.tmpl")
             ),
