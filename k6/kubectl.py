@@ -4,8 +4,8 @@ import sys
 from k6.config import Config
 
 
-def run(args: list[str], input: str | None = None) -> None:
-    result = subprocess.run(args, input=input, text=True, capture_output=True)
+def kubectl_run(args: list[str], stdin: str | None = None) -> None:
+    result = subprocess.run(args, input=stdin, text=True, capture_output=True)
     if result.stdout:
         print(result.stdout, end="")
     if result.returncode != 0:
@@ -13,7 +13,7 @@ def run(args: list[str], input: str | None = None) -> None:
         sys.exit(result.returncode)
 
 
-def kubectl(cfg: Config, *args: str) -> subprocess.CompletedProcess:
+def kubectl_get(cfg: Config, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["kubectl", f"--context={cfg.context}", "-n", cfg.namespace, *args],
         text=True,
