@@ -1,0 +1,1235 @@
+{
+  "version": "v4",
+  "title": "k6 Load Test",
+  "uploadedGrafana": false,
+  "variables": {},
+  "layout": [
+    {
+      "i": "panel-p95",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "h": 6,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-rps",
+      "x": 0,
+      "y": 6,
+      "w": 6,
+      "h": 6,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-chk",
+      "x": 6,
+      "y": 6,
+      "w": 6,
+      "h": 6,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-fail",
+      "x": 0,
+      "y": 12,
+      "w": 6,
+      "h": 6,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-err",
+      "x": 6,
+      "y": 12,
+      "w": 6,
+      "h": 6,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-vus",
+      "x": 0,
+      "y": 18,
+      "w": 12,
+      "h": 6,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-err-5xx",
+      "x": 0,
+      "y": 24,
+      "w": 6,
+      "h": 8,
+      "moved": false,
+      "static": false
+    },
+    {
+      "i": "panel-err-body",
+      "x": 6,
+      "y": 24,
+      "w": 6,
+      "h": 8,
+      "moved": false,
+      "static": false
+    }
+  ],
+  "panelMap": {},
+  "widgets": [
+    {
+      "id": "panel-p95",
+      "title": "HTTP Request Duration \u2014 p95 by Scenario",
+      "description": "95th-percentile latency per scenario (ms). Source: k6_http_req_duration histogram.",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "ms",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "p95",
+              "aggregateAttribute": {
+                "key": "k6_http_req_duration.bucket",
+                "dataType": "float64",
+                "type": "Histogram",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_http_req_duration.bucket--float64--Histogram--true"
+              },
+              "filters": {
+                "items": [
+                  {
+                    "id": "f-scenario",
+                    "key": {
+                      "key": "scenario",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "id": "scenario--string--tag--false"
+                    },
+                    "op": "!=",
+                    "value": ""
+                  }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [
+                {
+                  "key": "scenario",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "id": "scenario--string--tag--false"
+                }
+              ],
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{scenario}}",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "p95",
+              "spaceAggregation": "p95",
+              "stepInterval": 0,
+              "reduceTo": "avg"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-p95"
+      }
+    },
+    {
+      "id": "panel-rps",
+      "title": "Request Rate (reqs/s) by Scenario",
+      "description": "HTTP requests per second, split by scenario. Source: k6_http_reqs counter.",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "reqps",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "key": "k6_http_reqs",
+                "dataType": "float64",
+                "type": "Sum",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_http_reqs--float64--Sum--true"
+              },
+              "filters": {
+                "items": [
+                  {
+                    "id": "f-scenario",
+                    "key": {
+                      "key": "scenario",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "id": "scenario--string--tag--false"
+                    },
+                    "op": "!=",
+                    "value": ""
+                  }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [
+                {
+                  "key": "scenario",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "id": "scenario--string--tag--false"
+                }
+              ],
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{scenario}}",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "avg"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-rps"
+      }
+    },
+    {
+      "id": "panel-chk",
+      "title": "Checks Passed (rate) by Scenario",
+      "description": "Rate of checks passed per second per scenario. Source: k6_checks.total counter.",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "reqps",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "key": "k6_checks.total",
+                "dataType": "float64",
+                "type": "Sum",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_checks.total--float64--Sum--true"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "groupBy": [
+                {
+                  "key": "scenario",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "id": "scenario--string--tag--false"
+                }
+              ],
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{scenario}}",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "avg"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-chk"
+      }
+    },
+    {
+      "id": "panel-fail",
+      "title": "Request Failures (rate) by Scenario",
+      "description": "Rate of failed HTTP requests per second per scenario. Source: k6_http_req_failed.total counter.",
+      "panelTypes": "graph",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "reqps",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "rate",
+              "aggregateAttribute": {
+                "key": "k6_http_req_failed.total",
+                "dataType": "float64",
+                "type": "Sum",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_http_req_failed.total--float64--Sum--true"
+              },
+              "filters": {
+                "items": [
+                  {
+                    "id": "f-scenario",
+                    "key": {
+                      "key": "scenario",
+                      "dataType": "string",
+                      "type": "tag",
+                      "isColumn": false,
+                      "isJSON": false,
+                      "id": "scenario--string--tag--false"
+                    },
+                    "op": "!=",
+                    "value": ""
+                  }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [
+                {
+                  "key": "scenario",
+                  "dataType": "string",
+                  "type": "tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "id": "scenario--string--tag--false"
+                }
+              ],
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{scenario}}",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "avg"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-fail"
+      }
+    },
+    {
+      "id": "panel-err",
+      "title": "Requests by Status Code & Scenario",
+      "description": "Requests per minute grouped by scenario + status code. Grouped bar: each cluster = 1 minute, bars = scenario/status.",
+      "panelTypes": "bar",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "none",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "clickhouse_sql",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "sum",
+              "aggregateAttribute": {
+                "key": "k6_http_reqs",
+                "dataType": "float64",
+                "type": "Sum",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_http_reqs--float64--Sum--true"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "groupBy": [],
+              "expression": "A",
+              "disabled": false,
+              "legend": "",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "sum",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "sum"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "busca",
+            "name": "A",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'busca' AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "go_api",
+            "name": "B",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'go_api' AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "heimdall",
+            "name": "C",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'heimdall' AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "rmi",
+            "name": "D",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'rmi' AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "url_shortener",
+            "name": "E",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'url_shortener' AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-err"
+      }
+    },
+    {
+      "id": "panel-vus",
+      "title": "Active Virtual Users (VUs)",
+      "description": "Total active Virtual Users at the current moment. Source: k6_vus gauge.",
+      "panelTypes": "value",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "none",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "avg",
+              "aggregateAttribute": {
+                "key": "k6_vus",
+                "dataType": "float64",
+                "type": "Gauge",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_vus--float64--Gauge--true"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "groupBy": [],
+              "expression": "A",
+              "disabled": false,
+              "legend": "vus",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "avg",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "avg"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-vus"
+      }
+    },
+    {
+      "id": "panel-err-5xx",
+      "title": "Error Requests by Scenario & Status (4xx/5xx)",
+      "description": "Error requests (4xx/5xx) per minute grouped by scenario + status code.",
+      "panelTypes": "bar",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {},
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "none",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "clickhouse_sql",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "metrics",
+              "aggregateOperator": "sum",
+              "aggregateAttribute": {
+                "key": "k6_http_reqs",
+                "dataType": "float64",
+                "type": "Sum",
+                "isColumn": true,
+                "isJSON": false,
+                "id": "k6_http_reqs--float64--Sum--true"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "groupBy": [],
+              "expression": "A",
+              "disabled": false,
+              "legend": "",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "sum",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "sum"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "busca",
+            "name": "A",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'busca' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "go_api",
+            "name": "B",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'go_api' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "heimdall",
+            "name": "C",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'heimdall' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "rmi",
+            "name": "D",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'rmi' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          },
+          {
+            "disabled": false,
+            "legend": "url_shortener",
+            "name": "E",
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'url_shortener' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-err-5xx"
+      }
+    },
+    {
+      "id": "panel-err-body",
+      "title": "Top Error Patterns from App Logs",
+      "description": "Most frequent 5xx / exception log lines from app containers (istio-proxy excluded), with timestamps and durations normalised. Shows what is actually breaking, ranked by occurrence count.",
+      "panelTypes": "table",
+      "fillSpans": false,
+      "isStacked": false,
+      "mergeAllActiveQueries": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "bucketCount": 30,
+      "bucketWidth": 0,
+      "columnUnits": {
+        "A": "short"
+      },
+      "softMin": 0,
+      "softMax": 0,
+      "stackedBarChart": false,
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME",
+      "yAxisUnit": "none",
+      "selectedLogFields": [
+        {
+          "dataType": "string",
+          "name": "body",
+          "type": ""
+        },
+        {
+          "dataType": "string",
+          "name": "timestamp",
+          "type": ""
+        }
+      ],
+      "selectedTracesFields": [
+        {
+          "dataType": "string",
+          "id": "serviceName--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "serviceName",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "name--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "name",
+          "type": "tag"
+        },
+        {
+          "dataType": "float64",
+          "id": "durationNano--float64--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "durationNano",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "httpMethod--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "httpMethod",
+          "type": "tag"
+        },
+        {
+          "dataType": "string",
+          "id": "responseStatusCode--string--tag--true",
+          "isColumn": true,
+          "isJSON": false,
+          "key": "responseStatusCode",
+          "type": "tag"
+        }
+      ],
+      "query": {
+        "queryType": "clickhouse_sql",
+        "builder": {
+          "queryFormulas": [],
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "logs",
+              "aggregateOperator": "count",
+              "aggregateAttribute": {
+                "key": "",
+                "dataType": "",
+                "type": "",
+                "isColumn": false,
+                "isJSON": false,
+                "id": "------false"
+              },
+              "filters": {
+                "items": [],
+                "op": "AND"
+              },
+              "groupBy": [],
+              "expression": "A",
+              "disabled": false,
+              "legend": "",
+              "having": [],
+              "limit": null,
+              "orderBy": [],
+              "functions": [],
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "stepInterval": 0,
+              "reduceTo": "sum"
+            }
+          ]
+        },
+        "clickhouse_sql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": "SELECT resources_string['k8s.namespace.name'] AS service, replaceRegexpAll(replaceRegexpAll(replaceRegexpAll(body, '[0-9]{4}/[0-9]{2}/[0-9]{2} - [0-9]{2}:[0-9]{2}:[0-9]{2}', '<ts>'), '[0-9]+[a-z]+[0-9]*[a-z]*', '<dur>'), '[?][^ |\"]*', '?<params>') AS pattern, count() AS cnt FROM signoz_logs.distributed_logs_v2 WHERE resources_string['k8s.namespace.name'] IN ('busca', 'go', 'rmi', 'url-shortener', 'catalogo', 'heimdall') AND resources_string['k8s.container.name'] != 'istio-proxy' AND ts_bucket_start >= intDiv({{.start_timestamp_nano}}, 1000000000) AND ts_bucket_start <= intDiv({{.end_timestamp_nano}}, 1000000000) AND timestamp >= {{.start_timestamp_nano}} AND timestamp <= {{.end_timestamp_nano}} AND (body LIKE '% 5__ %' OR positionCaseInsensitive(body, 'exception') > 0 OR positionCaseInsensitive(body, 'panic') > 0) GROUP BY service, pattern ORDER BY cnt DESC LIMIT 20"
+          }
+        ],
+        "promql": [
+          {
+            "disabled": false,
+            "legend": "",
+            "name": "A",
+            "query": ""
+          }
+        ],
+        "id": "q-panel-err-body"
+      }
+    }
+  ]
+}

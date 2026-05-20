@@ -1,0 +1,47 @@
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: ${testrun}
+  namespace: ${namespace}
+spec:
+  parallelism: 1
+  cleanup: post
+  script:
+    configMap:
+      name: ${testrun}
+      file: load-test.js
+  arguments: ${arguments}
+  runner:
+    image: ${image}
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 3
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - "true"
+    env:
+      - name: SMOKE
+        value: "${smoke}"
+      - name: TARGET_RPS
+        value: "${target_rps}"
+      - name: SUSTAINED_DURATION
+        value: "${sustained_duration}"
+      - name: CPF_POOL_SIZE
+        value: "${cpf_pool_size}"
+      - name: K6_OTEL_GRPC_EXPORTER_INSECURE
+        value: "true"
+      - name: K6_OTEL_GRPC_EXPORTER_MAX_MESSAGE_SIZE
+        value: "67108864"
+      - name: K6_OTEL_GRPC_EXPORTER_ENDPOINT
+        value: ${otel_endpoint}
+      - name: K6_OTEL_METRIC_PREFIX
+        value: k6_
+      - name: K6_OTEL_SERVICE_NAME
+        value: superapp-load-test
+      - name: K6_OTEL_EXPORT_INTERVAL
+        value: ${export_interval}
+      - name: K6_OTEL_FLUSH_INTERVAL
+        value: ${flush_interval}
