@@ -1,8 +1,8 @@
 queries:
   totals:
-    group_by: scenario
+    group_by: service
     columns:
-      scenario: str
+      service: str
       total_reqs: int
       avg_ms: float
       max_ms: float
@@ -19,7 +19,7 @@ queries:
         GROUP BY fingerprint, metric_name
       )
       SELECT
-        JSONExtractString(ts.labels, 'scenario') AS scenario,
+        JSONExtractString(ts.labels, 'service') AS service,
         sumIf(val, metric_name = 'k6_http_reqs') AS total_reqs,
         round(
           sumIf(val, metric_name = 'k6_http_req_duration.sum') /
@@ -30,15 +30,16 @@ queries:
       FROM last
       JOIN signoz_metrics.distributed_time_series_v4 ts USING (fingerprint)
       WHERE JSONExtractString(ts.labels, 'testrun') = '{testrun}'
-        AND JSONExtractString(ts.labels, 'scenario') != ''
-      GROUP BY scenario
-      ORDER BY scenario
+        AND JSONExtractString(ts.labels, 'service') != ''
+        AND JSONExtractString(ts.labels, 'service') NOT LIKE '%_setup'
+      GROUP BY service
+      ORDER BY service
       FORMAT JSONEachRow
 
   distribution:
-    group_by: scenario
+    group_by: service
     columns:
-      scenario: str
+      service: str
       pct_25ms: float
       pct_100ms: float
       pct_500ms: float
@@ -51,7 +52,7 @@ queries:
         GROUP BY fingerprint
       )
       SELECT
-        JSONExtractString(ts.labels, 'scenario') AS scenario,
+        JSONExtractString(ts.labels, 'service') AS service,
         round(
           sumIf(val, JSONExtractString(ts.labels, 'le') = '25') /
           nullIf(sumIf(val, JSONExtractString(ts.labels, 'le') = '+Inf'), 0) * 100,
@@ -76,9 +77,10 @@ queries:
       JOIN signoz_metrics.distributed_time_series_v4 ts USING (fingerprint)
       WHERE metric_name = 'k6_http_req_duration.bucket'
         AND JSONExtractString(ts.labels, 'testrun') = '{testrun}'
-        AND JSONExtractString(ts.labels, 'scenario') != ''
-      GROUP BY scenario
-      ORDER BY scenario
+        AND JSONExtractString(ts.labels, 'service') != ''
+        AND JSONExtractString(ts.labels, 'service') NOT LIKE '%_setup'
+      GROUP BY service
+      ORDER BY service
       FORMAT JSONEachRow
 
   window:

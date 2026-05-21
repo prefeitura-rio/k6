@@ -12,7 +12,10 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        pythonEnv = pkgs.python3.withPackages (ps: [ ps.jinja2 ps.pyyaml ]);
+        pythonEnv = pkgs.python3.withPackages (ps: [
+          ps.jinja2
+          ps.pyyaml
+        ]);
       in
       {
         devShells.default = pkgs.mkShell {
@@ -20,7 +23,8 @@
             basedpyright
             just
             kubectl
-            prettier
+            oxfmt
+            oxlint
             pythonEnv
             ruff
             typescript

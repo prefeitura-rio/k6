@@ -671,8 +671,8 @@
     },
     {
       "id": "panel-err",
-      "title": "Requests by Status Code & Scenario",
-      "description": "Requests per minute grouped by scenario + status code. Grouped bar: each cluster = 1 minute, bars = scenario/status.",
+      "title": "Request Volume by Scenario (per minute)",
+      "description": "Total requests per minute per scenario. Grouped bar: each cluster = 1 minute, bars = scenario.",
       "panelTypes": "bar",
       "fillSpans": false,
       "isStacked": false,
@@ -824,8 +824,8 @@
     {
       "id": "panel-vus",
       "title": "Active Virtual Users (VUs)",
-      "description": "Total active Virtual Users at the current moment. Source: k6_vus gauge.",
-      "panelTypes": "value",
+      "description": "Total active Virtual Users over time. Source: k6_vus gauge.",
+      "panelTypes": "graph",
       "fillSpans": false,
       "isStacked": false,
       "mergeAllActiveQueries": false,
@@ -951,8 +951,8 @@
     },
     {
       "id": "panel-err-5xx",
-      "title": "Error Requests by Scenario & Status (4xx/5xx)",
-      "description": "Error requests (4xx/5xx) per minute grouped by scenario + status code.",
+      "title": "Error Requests by Scenario & Status Code (4xx/5xx)",
+      "description": "Error requests (4xx/5xx) per minute grouped by scenario and status code.",
       "panelTypes": "bar",
       "fillSpans": false,
       "isStacked": false,
@@ -1058,36 +1058,12 @@
             }
           ]
         },
-        "clickhouse_sql": [
+          "clickhouse_sql": [
           {
             "disabled": false,
-            "legend": "busca",
+            "legend": "{{scenario}} {{status}}",
             "name": "A",
-            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'busca' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
-          },
-          {
-            "disabled": false,
-            "legend": "go_api",
-            "name": "B",
-            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'go_api' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
-          },
-          {
-            "disabled": false,
-            "legend": "heimdall",
-            "name": "C",
-            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'heimdall' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
-          },
-          {
-            "disabled": false,
-            "legend": "rmi",
-            "name": "D",
-            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'rmi' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
-          },
-          {
-            "disabled": false,
-            "legend": "url_shortener",
-            "name": "E",
-            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') = 'url_shortener' AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts ORDER BY ts"
+            "query": "SELECT toStartOfInterval(toDateTime(intDiv(unix_milli, 1000)), toIntervalSecond(60)) AS ts, JSONExtractString(labels, 'scenario') AS scenario, JSONExtractString(labels, 'status') AS status, sum(value) AS value FROM signoz_metrics.distributed_samples_v4 JOIN signoz_metrics.distributed_time_series_v4 USING (fingerprint) WHERE metric_name = 'k6_http_reqs' AND JSONExtractString(labels, 'scenario') IN ('go_api', 'rmi', 'url_shortener') AND (JSONExtractString(labels, 'status') LIKE '4%' OR JSONExtractString(labels, 'status') LIKE '5%') AND unix_milli >= intDiv({{.start_timestamp_nano}}, 1000000) AND unix_milli <= intDiv({{.end_timestamp_nano}}, 1000000) GROUP BY ts, scenario, status ORDER BY ts"
           }
         ],
         "promql": [

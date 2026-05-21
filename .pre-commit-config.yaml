@@ -24,14 +24,20 @@ repos:
         pass_filenames: false
 
       - id: tsc
-        name: typescript type check
+        name: tsc
         language: system
         entry: tsc --noEmit
         files: \.(ts)$
         pass_filenames: false
 
-      - id: prettier
-        name: prettier format check
+      - id: oxlint
+        name: oxlint
         language: system
-        entry: prettier --check
+        entry: oxlint --deny-warnings
+        files: \.(ts)$
+
+      - id: oxfmt
+        name: oxfmt
+        language: system
+        entry: oxfmt --check
         files: \.(ts)$
