@@ -6,3 +6,4 @@ node_modules
 scripts/pyrightconfig.json
 .venv/
 reports/*.md
+.env

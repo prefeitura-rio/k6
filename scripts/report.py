@@ -23,13 +23,7 @@ MONTHS = [
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ]
 
-SCENARIO_LABELS: dict[str, str] = {
-    "busca": "Busca",
-    "go_api": "Empregabilidade (Go API)",
-    "heimdall": "Autenticação (Heimdall)",
-    "rmi": "Cadastro do Cidadão (RMI)",
-    "url_shortener": "Encurtador de URL",
-}
+
 
 COLUMN_TYPES: dict[str, type] = {"str": str, "int": int, "float": float}
 
@@ -77,7 +71,7 @@ class ScenarioMetrics:
 
     @property
     def label(self) -> str:
-        return SCENARIO_LABELS.get(self.scenario, self.scenario)
+        return self.scenario
 
 
 @dataclass
@@ -246,7 +240,6 @@ def render_section(
         elapsed_min=window.elapsed_min,
         target_rps=cfg.target_rps,
         sustained_duration_label=duration_label(cfg.sustained_duration),
-        cpf_pool_size=cfg.cpf_pool_size,
         metrics=metrics,
         total_reqs=sum(m.total_reqs for m in metrics),
         interpretation=interpretation,

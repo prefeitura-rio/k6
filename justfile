@@ -7,6 +7,7 @@ run_id := `date +%y%m%d%H%M`
 
 run +scripts:
     #!/usr/bin/env bash
+    : "${KUBE_CONTEXT:?KUBE_CONTEXT is not set}"
     SCRIPTS=({{ scripts }})
     PREFIX="${SCRIPTS[0]%%--*}"
     BASE_ID="${PREFIX}--{{ env_name }}--$([ "${SMOKE:-false}" = "true" ] && echo sm || echo lt)--{{ run_id }}"
@@ -19,22 +20,19 @@ report base_id +scripts:
 
 tail base_id +scripts:
     #!/usr/bin/env bash
-    SCRIPTS=({{ scripts }})
-    PREFIX="${SCRIPTS[0]%%--*}"
-    CONTEXT=$(python3 -m scripts.clusters "${PREFIX}" "{{ env_name }}")
-
+    : "${KUBE_CONTEXT:?KUBE_CONTEXT is not set}"
     for script in {{ scripts }}; do
         SUFFIX="${script#*--}"
         TESTRUN="{{ base_id }}--${SUFFIX}"
-        POD=$(kubectl --context="${CONTEXT}" -n "{{ namespace }}" get pods \
+        POD=$(kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" get pods \
             -l "k6_cr=${TESTRUN}" --field-selector=status.phase=Running \
             -o jsonpath='{.items[0].metadata.name}')
-        kubectl --context="${CONTEXT}" -n "{{ namespace }}" logs -f "${POD}" &
+        kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" logs -f "${POD}" &
     done
 
     wait
 
 list:
     #!/usr/bin/env bash
-    CONTEXT=$(python3 -m scripts.clusters "superapp" "{{ env_name }}")
-    kubectl --context="${CONTEXT}" -n "{{ namespace }}" get testruns -o wide
+    : "${KUBE_CONTEXT:?KUBE_CONTEXT is not set}"
+    kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" get testruns -o wide

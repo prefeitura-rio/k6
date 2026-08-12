@@ -101,7 +101,6 @@ def main() -> None:
     try:
         for script in scripts:
             cfg = Config(testrun=testrun_id(base_id, script), script_file=script, smoke=smoke)
-            cfg.fetch_url_shortener_token()
             validate(cfg)
             upload_configmap(cfg)
             submit_testrun(cfg)

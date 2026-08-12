@@ -31,12 +31,8 @@ spec:
         value: "${scenario_count}"
       - name: SUSTAINED_DURATION
         value: "${sustained_duration}"
-      - name: CPF_POOL_SIZE
-        value: "${cpf_pool_size}"
       - name: ENV
         value: "${env}"
-      - name: URL_SHORTENER_API_TOKEN
-        value: "${url_shortener_api_token}"
       - name: K6_OTEL_GRPC_EXPORTER_INSECURE
         value: "true"
       - name: K6_OTEL_GRPC_EXPORTER_MAX_MESSAGE_SIZE
@@ -46,8 +42,10 @@ spec:
       - name: K6_OTEL_METRIC_PREFIX
         value: k6_
       - name: K6_OTEL_SERVICE_NAME
-        value: superapp-load-test
+        value: "${otel_service_name}"
       - name: K6_OTEL_EXPORT_INTERVAL
         value: ${export_interval}
       - name: K6_OTEL_FLUSH_INTERVAL
         value: ${flush_interval}
+${extra_env}
+${secret_env}
