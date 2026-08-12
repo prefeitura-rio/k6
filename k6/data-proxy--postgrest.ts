@@ -54,22 +54,59 @@ const ROUTES = [
     { weight: 5,  value: "small_table" },
 ] as const;
 
+/** OAuth2 token response shape returned by Keycloak. */
+type TokenResponse = { access_token: string; expires_in: number };
+
 /** Data produced by `setup` and passed to each VU iteration. */
-type SetupData = { token: string };
+type SetupData = { token: string; expiresAt: number };
 
 /**
- * Fetches an OAuth2 access token via `client_credentials` grant once before VUs start.
- * The token is shared across all iterations. Token lifetime must exceed the test duration
- * (Keycloak default is 300 s — sufficient for a 5-minute load test).
+ * Fetches a fresh access token via `client_credentials` grant.
+ * Returns the token string and its absolute expiry timestamp in epoch milliseconds.
  */
-export function setup(): SetupData {
+function fetchToken(): SetupData {
     const res = http.post(
         OIDC_TOKEN_URL,
         `grant_type=client_credentials&client_id=${OIDC_CLIENT_ID}&client_secret=${OIDC_CLIENT_SECRET}`,
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
     );
-    const body = JSON.parse(res.body as string) as { access_token: string };
-    return { token: body.access_token };
+    const body = JSON.parse(res.body as string) as TokenResponse;
+    return {
+        token: body.access_token,
+        expiresAt: Date.now() + body.expires_in * 1000,
+    };
+}
+
+/**
+ * Fetches one token before VUs start. Shared as the initial value for each VU's
+ * local state — avoids a burst of concurrent token requests on the first iteration.
+ */
+export function setup(): SetupData {
+    return fetchToken();
+}
+
+/**
+ * Per-VU mutable token state. Each VU runtime is isolated — no shared state,
+ * no locks needed. Initialised lazily from `setup()` data on the first iteration.
+ */
+let vuToken = "";
+let vuExpiresAt = 0;
+
+/**
+ * Returns a valid token for the current VU, refreshing if the token is within
+ * 30 seconds of expiry. On the first call, seeds from `setup()` data.
+ */
+function ensureToken(data: SetupData): string {
+    if (!vuToken) {
+        vuToken = data.token;
+        vuExpiresAt = data.expiresAt;
+    }
+    if (Date.now() > vuExpiresAt - 30_000) {
+        const refreshed = fetchToken();
+        vuToken = refreshed.token;
+        vuExpiresAt = refreshed.expiresAt;
+    }
+    return vuToken;
 }
 
 /**
@@ -77,7 +114,7 @@ export function setup(): SetupData {
  * corresponding authenticated GET request against the PostgREST API.
  */
 export default function(data: SetupData): void {
-    const auth = { headers: { Authorization: `Bearer ${data.token}` } };
+    const auth = { headers: { Authorization: `Bearer ${ensureToken(data)}` } };
     const offset = Math.floor(Math.random() * 200) * 10;
 
     switch (weightedPick([...ROUTES])) {
