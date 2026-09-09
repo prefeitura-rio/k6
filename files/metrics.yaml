@@ -83,6 +83,36 @@ queries:
       ORDER BY service
       FORMAT JSONEachRow
 
+  health:
+    group_by: service
+    columns:
+      service: str
+      http_errors: int
+      checks_total: int
+    sql: |
+      WITH last AS (
+        SELECT fingerprint, metric_name, argMax(value, unix_milli) AS val
+        FROM signoz_metrics.distributed_samples_v4
+        WHERE metric_name IN ('k6_http_req_failed.total', 'k6_checks.total')
+        GROUP BY fingerprint, metric_name
+      )
+      SELECT
+        JSONExtractString(ts.labels, 'service') AS service,
+        sumIf(
+          val,
+          metric_name = 'k6_http_req_failed.total' AND
+          JSONExtractString(ts.labels, 'condition') = 'nonzero'
+        ) AS http_errors,
+        sumIf(val, metric_name = 'k6_checks.total') AS checks_total
+      FROM last
+      JOIN signoz_metrics.distributed_time_series_v4 ts USING (fingerprint)
+      WHERE JSONExtractString(ts.labels, 'testrun') = '{testrun}'
+        AND JSONExtractString(ts.labels, 'service') != ''
+        AND JSONExtractString(ts.labels, 'service') NOT LIKE '%_setup'
+      GROUP BY service
+      ORDER BY service
+      FORMAT JSONEachRow
+
   window:
     group_by: null
     columns:

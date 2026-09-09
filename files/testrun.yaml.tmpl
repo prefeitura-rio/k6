@@ -4,8 +4,9 @@ metadata:
   name: ${testrun}
   namespace: ${namespace}
 spec:
-  parallelism: 1
-  cleanup: post
+  parallelism: ${parallelism}
+${cleanup_block}
+  quiet: "false"
   script:
     configMap:
       name: ${testrun}

@@ -15,7 +15,7 @@ def testrun_id(base_id: str, script: str) -> str:
 def _render_extra_env(extra: dict[str, str]) -> str:
     """Render plain key/value pairs as k8s env entries."""
     return "\n".join(
-        f'      - name: {k}\n        value: "{v}"'
+        f"      - name: {k}\n        value: {json.dumps(v)}"
         for k, v in extra.items()
     )
 
@@ -50,6 +50,8 @@ class Config:
     target_rps: str = field(default_factory=lambda: environ.get("TARGET_RPS", "75"))
     scenario_count: str = field(default_factory=lambda: environ.get("SCENARIO_COUNT", "5"))
     sustained_duration: str = field(default_factory=lambda: environ.get("SUSTAINED_DURATION", "35m"))
+    parallelism: int = field(default_factory=lambda: int(environ.get("PARALLELISM", "1")))
+    cleanup: str = field(default_factory=lambda: environ.get("K6_CLEANUP", "post"))
     otel_endpoint: str = field(default_factory=lambda: environ.get("K6_OTEL_ENDPOINT", "signoz-otel-collector.signoz:4317"))
     clickhouse_pod: str = field(default_factory=lambda: environ.get("CLICKHOUSE_POD", "chi-signoz-clickhouse-cluster-0-1-0"))
     clickhouse_namespace: str = field(default_factory=lambda: environ.get("CLICKHOUSE_NAMESPACE", "signoz"))
@@ -80,6 +82,8 @@ class Config:
             "target_rps": self.target_rps,
             "scenario_count": self.scenario_count,
             "sustained_duration": self.sustained_duration,
+            "parallelism": str(self.parallelism),
+            "cleanup_block": self._cleanup_block(),
             "env": self.env,
             "otel_service_name": self.prefix,
             "otel_endpoint": self.otel_endpoint,
@@ -96,3 +100,10 @@ class Config:
         if self.smoke:
             args += " --no-thresholds"
         return args
+
+    def _cleanup_block(self) -> str:
+        if self.cleanup == "post":
+            return "  cleanup: post"
+        if self.cleanup == "":
+            return ""
+        raise ConfigError("K6_CLEANUP must be 'post' or empty")

@@ -21,13 +21,21 @@ report base_id +scripts:
 tail base_id +scripts:
     #!/usr/bin/env bash
     : "${KUBE_CONTEXT:?KUBE_CONTEXT is not set}"
+    : "${TAIL_WAIT_TIMEOUT:=120s}"
+    LOG_DIR="${LOG_DIR:-reports/logs}"
+    mkdir -p "${LOG_DIR}"
     for script in {{ scripts }}; do
         SUFFIX="${script#*--}"
         TESTRUN="{{ base_id }}--${SUFFIX}"
+        kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" wait \
+            --for=condition=Ready \
+            --timeout="${TAIL_WAIT_TIMEOUT}" \
+            pod -l "k6_cr=${TESTRUN},runner=true"
         POD=$(kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" get pods \
-            -l "k6_cr=${TESTRUN}" --field-selector=status.phase=Running \
+            -l "k6_cr=${TESTRUN},runner=true" --field-selector=status.phase=Running \
             -o jsonpath='{.items[0].metadata.name}')
-        kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" logs -f "${POD}" &
+        kubectl --context="${KUBE_CONTEXT}" -n "{{ namespace }}" logs -f "${POD}" \
+            | tee "${LOG_DIR}/${TESTRUN}.log" &
     done
 
     wait

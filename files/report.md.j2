@@ -26,12 +26,12 @@
 
 ### 2.1 Visão Geral
 
-| Serviço | Requisições | Erros | Taxa de Erro |
-| --- | --- | --- | --- |
+| Serviço | Requisições | Erros HTTP | Taxa de Erro | Checks |
+| --- | --- | --- | --- | --- |
 {%- for m in metrics %}
-| {{ m.label }} | {{ "{:,}".format(m.total_reqs) }} | N/D | N/D |
+| {{ m.label }} | {{ "{:,}".format(m.total_reqs) }} | {{ "{:,}".format(health[m.label].http_errors) }} | {{ "%.2f"|format(health[m.label].http_errors / m.total_reqs * 100) }}% | {{ "N/D" if health[m.label].checks_total == 0 else "{:,}".format(health[m.label].checks_total) }} |
 {%- endfor %}
-| **Total** | **{{ "{:,}".format(total_reqs) }}** | **N/D** | **N/D** |
+| **Total** | **{{ "{:,}".format(total_reqs) }}** | **{{ "{:,}".format(total_http_errors) }}** | **calculada por serviço** | **{{ "N/D" if total_checks == 0 else "{:,}".format(total_checks) }}** |
 
 ### 2.2 Latência
 
@@ -48,7 +48,7 @@
 | Serviço | Resultado |
 | --- | --- |
 {%- for m in metrics %}
-| {{ m.label }} | {{ "✅ Aprovado" if m.pct_1s == 100 else "⚠️ Condicional" }} |
+| {{ m.label }} | {{ "✅ Transporte aprovado; semântica deve ser confirmada no resumo k6" if health[m.label].http_errors == 0 and m.pct_1s == 100 else "⚠️ Condicional" }} |
 {%- endfor %}
 
 ---

@@ -75,6 +75,12 @@ class ScenarioMetrics:
 
 
 @dataclass
+class HealthMetrics:
+    http_errors: int = 0
+    checks_total: int = 0
+
+
+@dataclass
 class WindowMetrics:
     started_at: str = "—"
     ended_at: str = "—"
@@ -166,12 +172,13 @@ def fetch_metrics(
     cfg: Config,
     queries: dict[str, QueryDef],
     scenarios: list[str],
-) -> tuple[list[ScenarioMetrics], WindowMetrics]:
+) -> tuple[list[ScenarioMetrics], dict[str, HealthMetrics], WindowMetrics]:
     totals = index_by(run_query(cfg, queries["totals"], cfg.testrun), queries["totals"].group_by)
     distributions = index_by(
         run_query(cfg, queries["distribution"], cfg.testrun),
         queries["distribution"].group_by,
     )
+    health = index_by(run_query(cfg, queries["health"], cfg.testrun), queries["health"].group_by)
     windows = run_query(cfg, queries["window"], cfg.testrun)
     window = to_window_metrics(windows[0]) if windows else WindowMetrics()
 
@@ -193,7 +200,14 @@ def fetch_metrics(
                 pct_1s=float(distributions.get(s, {}).get("pct_1s", 0.0)),
             )
         )
-    return metrics, window
+    health_metrics = {
+        s: HealthMetrics(
+            http_errors=int(health.get(s, {}).get("http_errors", 0)),
+            checks_total=int(health.get(s, {}).get("checks_total", 0)),
+        )
+        for s in scenarios
+    }
+    return metrics, health_metrics, window
 
 
 def interpret(cfg: Config, metrics: list[ScenarioMetrics], window: WindowMetrics) -> str | None:
@@ -224,6 +238,7 @@ def interpret(cfg: Config, metrics: list[ScenarioMetrics], window: WindowMetrics
 def render_section(
     cfg: Config,
     metrics: list[ScenarioMetrics],
+    health: dict[str, HealthMetrics],
     window: WindowMetrics,
     interpretation: str | None,
     jinja_env: Environment,
@@ -241,7 +256,10 @@ def render_section(
         target_rps=cfg.target_rps,
         sustained_duration_label=duration_label(cfg.sustained_duration),
         metrics=metrics,
+        health=health,
         total_reqs=sum(m.total_reqs for m in metrics),
+        total_http_errors=sum(h.http_errors for h in health.values()),
+        total_checks=sum(h.checks_total for h in health.values()),
         interpretation=interpretation,
     )
 
@@ -266,7 +284,7 @@ def run_report(base_id: str, configs: list[Config], skip_interpretation: bool = 
     for cfg in configs:
         info(f"Fetching metrics for '{cfg.testrun}' via {cfg.context}...")
         scenarios = [script_to_scenario(cfg.script_file)]
-        metrics, window = fetch_metrics(cfg, queries, scenarios)
+        metrics, health, window = fetch_metrics(cfg, queries, scenarios)
 
         if not metrics:
             warning(f"No metrics found for '{cfg.testrun}' — skipping")
@@ -277,10 +295,19 @@ def run_report(base_id: str, configs: list[Config], skip_interpretation: bool = 
             info("Generating interpretation...")
             interpretation = interpret(cfg, metrics, window)
 
-        sections.append(render_section(cfg, metrics, window, interpretation, jinja_env))
+        sections.append(render_section(cfg, metrics, health, window, interpretation, jinja_env))
 
     if not sections:
-        warning("No sections generated — skipping report")
+        first = configs[0]
+        first.reports_dir.mkdir(parents=True, exist_ok=True)
+        output = first.reports_dir / f"{base_id}.md"
+        output.write_text(
+            f"# {first.script_file}\n\n"
+            f"**Status:** UNKNOWN — no metrics were found for `{first.testrun}`.\n\n"
+            "The load-test result is not valid for capacity conclusions. "
+            "Inspect the runner log captured by `just tail` and the telemetry pipeline.\n"
+        )
+        warning(f"No metrics found — wrote non-approving report to '{output}'")
         return
 
     first = configs[0]
