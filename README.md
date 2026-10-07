@@ -80,6 +80,83 @@ K6_SECRET_ENV='{"SF_CLIENT_ID":{"secret":"agentforce-loadtest","key":"client-id"
 just run app-mcp-server--sf
 ```
 
+The MIAW scenario (`app-mcp-server--miaw`) drives the Agentforce chat channel through the
+Messaging for In-App and Web API. Each iteration is one conversation: get an unauthenticated
+token, create the conversation, send the configured messages paced at `MESSAGES_PER_MINUTE`, keep
+the conversation open until `CONVERSATION_WINDOW_SECONDS` elapses, then close it (`DELETE`). One
+iteration takes about 60–80s. Defaults point at the `prefeitura-rio--devmarcelo` sandbox; the
+script refuses to start against the production host or org unless `ALLOW_PROD=true`.
+
+All MIAW knobs are read inside the runner pod, so pass them through `K6_EXTRA_ENV` — exporting
+them in the shell has no effect:
+
+```sh
+# Smoke: 1 VU × 1 iteration, no thresholds
+SMOKE=true just run app-mcp-server--miaw
+
+# Concurrency target (closed model): N concurrent users, each looping conversations
+RUNNER_CPU_REQUEST=4 RUNNER_MEMORY_REQUEST=8Gi RUNNER_MEMORY_LIMIT=12Gi \
+K6_EXTRA_ENV='{"CONCURRENT_VUS":"2500","RAMP_DURATION":"5m","HOLD_DURATION":"10m"}' \
+just run app-mcp-server--miaw
+
+# Step ladder: climb several plateaus in one run to find where the platform breaks
+RUNNER_CPU_REQUEST=4 RUNNER_MEMORY_REQUEST=8Gi RUNNER_MEMORY_LIMIT=12Gi \
+K6_EXTRA_ENV='{"STEP_LADDER":"true","STEPS":"100,500,1000,1500,2000,2500","STEP_RAMP":"2m","STEP_HOLD":"5m"}' \
+just run app-mcp-server--miaw
+
+# Arrival rate (open model): new sessions per minute; jitter must be 0 in this mode
+K6_EXTRA_ENV='{"EXECUTOR":"arrival-rate","SESSIONS_PER_MINUTE":"600","STARTUP_JITTER_SECONDS":"0"}' \
+just run app-mcp-server--miaw
+```
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MIAW_SCRT_URL` | sandbox SCRT URL | MIAW API host |
+| `MIAW_ORG_ID` | `00D89000006oT9pEAE` | Salesforce org ID |
+| `MIAW_DEPLOYMENT_NAME` | `API_Chat_Agentforce_Prefeitura_Rio` | Embedded Service deployment |
+| `ALLOW_PROD` | `false` | Required to target the production host/org |
+| `EXECUTOR` | `ramping-vus` | `ramping-vus` (concurrent users) or `arrival-rate` (sessions/min) |
+| `CONCURRENT_VUS` | `1` | Target VUs (`ramping-vus`) |
+| `SESSIONS_PER_MINUTE` | `CONCURRENT_VUS` | Target session rate (`arrival-rate`) |
+| `ARRIVAL_MAX_VUS` / `ARRIVAL_PREALLOC_VUS` | 1.3 × peak rate | VU pool for `arrival-rate` |
+| `RAMP_DURATION` / `HOLD_DURATION` | `5m` / `10m` | Single-target ramp and hold |
+| `STEP_LADDER` | `false` | Use `STEPS` plateaus instead of the single target |
+| `STEPS` | `100,500,1000,1500,2000,2500` | Plateau targets (VUs, or sessions/min under `arrival-rate`) |
+| `STEP_RAMP` / `STEP_HOLD` | `2m` / `5m` | Ramp and hold per plateau |
+| `MESSAGES_PER_MINUTE` | `3` | Message pacing within a conversation |
+| `MIAW_MESSAGES` | 3 small-talk messages | `\|\|`-separated messages, one per turn |
+| `CONVERSATION_WINDOW_SECONDS` | `60` | How long a healthy conversation stays open |
+| `FILL_CONVERSATION_MINUTE` | `true` | `false` closes early and idles `SESSION_COOLDOWN_SECONDS` instead |
+| `SESSION_COOLDOWN_SECONDS` | `15` | Backoff after a failed conversation |
+| `CLOSE_CONVERSATION` | `true` | Close (`DELETE`) each conversation at the end |
+| `POLL_INTERVAL_SECONDS` / `MAX_POLL_TIMEOUT_SECONDS` | `1` / `60` | Agent-reply polling |
+| `MAX_RETRIES` | `3` | Retries for token/create/close on 429/5xx |
+| `RETRY_BASE_BACKOFF_SECONDS` / `RETRY_MAX_BACKOFF_SECONDS` | `2` / `30` | Exponential backoff bounds |
+| `STARTUP_JITTER_SECONDS` | `20` | Random delay before a VU's first iteration (ignored in smoke) |
+| `MIAW_MAX_UNIQUE_PHONES` | `1000000000` | Phone-number space for unique per-(VU, iteration) numbers |
+
+Outside smoke mode the run aborts when more than 10% of requests fail for 30s; the pass/fail
+thresholds are `http_req_failed < 1%` and turn completion, Agentforce success and conversation
+completion above 90% (provisional, pending confirmation with the client), with agent-reply p95
+under 30s. The k6 Operator evaluates thresholds per
+runner pod, so `just run` rejects this script unless `PARALLELISM=1`. When a conversation create
+fails, the script makes a best-effort cleanup `DELETE` tagged `service=miaw_setup`,
+`phase=cleanup`; it only feeds the `miaw_orphan_cleanup` counter and is left out of thresholds
+and the report. The `miaw_*` custom metrics are only visible in SigNoz; `just report` covers the
+built-in HTTP metrics of `service=miaw`.
+
+Operational constraints for MIAW runs:
+
+- Run between 09:00 and 18:00 America/Sao_Paulo, Monday to Saturday. Outside that window the
+  channel answers `412` to every conversation create, so the run only exercises the failure path.
+- Wait about 30 minutes between runs against the same org: the platform drains its active-session
+  counter slowly, and a run started too soon inherits the previous run's sessions.
+- 2,500 VUs fit in one runner with the resources above. The cluster autoscaler may add a node for
+  the 4-CPU request, so the runner can stay `Pending` for a few minutes.
+- Every conversation requests a new access token. If the org caps tokens per minute, token `429`s
+  (`miaw_token_rate_limited`) appear first; prefer the step ladder to locate that limit instead
+  of a single ramp that aborts early.
+
 The MCP script assumes independent stateless Streamable HTTP requests: each request is
 self-contained and does not use session headers or notification calls. Set `MCP_BASE_URL`
 through `K6_EXTRA_ENV` to the external service prefix **including** `/mcp`; the script appends
@@ -110,6 +187,7 @@ k6/                   TypeScript k6 entrypoints (one file per scenario)
   lib.ts              Shared utilities: scenario builder, HTTP helpers, CPF pool
   superapp--*.ts      Per-service scripts
   app-mcp-server--mcp.ts  Stateless Streamable HTTP MCP scenario
+  app-mcp-server--miaw.ts Agentforce MIAW chat-channel scenario
 scripts/              Python orchestration package
   config.py           Runtime configuration (env vars + defaults)
   submit.py           Uploads ConfigMap and submits TestRun CRs
@@ -135,6 +213,10 @@ reports/              Generated markdown reports (git-ignored)
 | `ENV` | `staging` | Target environment (`staging` or `prod`) |
 | `TARGET_RPS` | `75` | Total requests per second across all scenarios |
 | `SUSTAINED_DURATION` | `35m` | Duration of the sustained load phase |
+| `PARALLELISM` | `1` | Runner pods per TestRun (`app-mcp-server--miaw` requires `1`) |
+| `RUNNER_CPU_REQUEST` / `RUNNER_MEMORY_REQUEST` / `RUNNER_MEMORY_LIMIT` | — | Runner pod resources; `resources` is omitted when none are set |
+| `K6_EXTRA_ENV` | — | JSON map of extra plain env vars for the runner pod |
+| `K6_SECRET_ENV` | — | JSON map of env vars read from Secrets in `k6-operator-system` |
 | `CPF_POOL_SIZE` | `7500` | Number of unique CPFs in the VU data pool |
 | `K6_IMAGE` | `grafana/k6:2.0.0` | k6 container image used by the operator |
 | `CLICKHOUSE_POD` | `chi-signoz-clickhouse-cluster-0-1-0` | ClickHouse pod for metric queries |
