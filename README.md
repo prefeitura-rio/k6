@@ -124,7 +124,7 @@ just run app-mcp-server--miaw
 | `STEPS` | `100,500,1000,1500,2000,2500` | Plateau targets (VUs, or sessions/min under `arrival-rate`) |
 | `STEP_RAMP` / `STEP_HOLD` | `2m` / `5m` | Ramp and hold per plateau |
 | `MESSAGES_PER_MINUTE` | `3` | Message pacing within a conversation |
-| `MIAW_MESSAGES` | 3 small-talk messages | `\|\|`-separated messages, one per turn |
+| `MIAW_MESSAGES` | `Oi!` / `Quem é você?` / `Obrigado, até mais!` | `\|\|`-separated messages, one per turn. Informational questions route to `google_search` and call the production MCP (billed action); see below |
 | `CONVERSATION_WINDOW_SECONDS` | `60` | How long a healthy conversation stays open |
 | `FILL_CONVERSATION_MINUTE` | `true` | `false` closes early and idles `SESSION_COOLDOWN_SECONDS` instead |
 | `SESSION_COOLDOWN_SECONDS` | `15` | Backoff after a failed conversation |
@@ -148,6 +148,13 @@ and the report. The `miaw_*` custom metrics are only visible in SigNoz; `just re
 built-in HTTP metrics of `service=miaw`.
 
 Operational constraints for MIAW runs:
+
+- Keep the messages to small talk the agent answers without actions. Any message the router
+  reads as an information request (even "como você pode me ajudar?") goes to `google_search`,
+  which runs a knowledge search and a web search on the shared production MCP — a billed
+  standard action per message, and load on the MCP that serves real citizens. Before changing
+  `MIAW_MESSAGES`, run 1 VU and check the MCP logs (`kubectl -n mcp logs`) for
+  `Iniciando pesquisa Google para: <message>`.
 
 - Against the sandbox, run between 09:00 and 18:00 America/Sao_Paulo, Monday to Saturday.
   Outside that window the sandbox channel answers `412` to every conversation create, so the run

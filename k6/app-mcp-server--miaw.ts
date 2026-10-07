@@ -108,9 +108,13 @@ if ((SCRT_URL.includes(PROD_SCRT_HOST) || ORG_ID === PROD_ORG_ID) && !ALLOW_PROD
 }
 
 // Conversation messages — ONE per turn; the turn count follows the list length.
-// Default = 3 small-talk NO_ACTION probes. Override with MIAW_MESSAGES
-// ("||"-separated) to drive a different journey without touching this file.
-const DEFAULT_MESSAGES = ["Oi!", "Quem é você e como você pode me ajudar?", "Obrigado, até mais!"];
+// Default = 3 small-talk NO_ACTION probes that the agent answers without actions.
+// Keep them that way: anything the router reads as an information request goes to
+// google_search, which runs a knowledge search and a web search on the shared
+// production MCP (a billed standard action per message). The previous turn 2, "Quem
+// é você e como você pode me ajudar?", did exactly that on every conversation.
+// Override with MIAW_MESSAGES ("||"-separated) to drive a different journey.
+const DEFAULT_MESSAGES = ["Oi!", "Quem é você?", "Obrigado, até mais!"];
 const NO_ACTION_MESSAGES: string[] = (() => {
     const raw = __ENV["MIAW_MESSAGES"];
     if (typeof raw === "string" && raw.trim().length > 0) {
