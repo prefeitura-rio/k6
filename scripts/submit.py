@@ -12,15 +12,24 @@ from .log import error, info, success
 
 TEMPLATE_PATH = HERE / "files" / "testrun.yaml.tmpl"
 
+# Scripts whose abortOnFail thresholds must be evaluated over the whole test. The k6
+# Operator evaluates thresholds per runner pod, so these only stay global with one runner.
+SINGLE_RUNNER_SCRIPTS = {"app-mcp-server--miaw"}
+
 
 def validate(cfg: Config) -> None:
-    """Raise `ConfigError` if required files are missing."""
+    """Raise `ConfigError` if required files are missing or the run config is invalid."""
     checks = [
         (cfg.scripts_dir.is_dir(), f"Scripts directory not found: {cfg.scripts_dir}"),
         (TEMPLATE_PATH.exists(), f"Template not found: {TEMPLATE_PATH}"),
         (
             (cfg.scripts_dir / f"{cfg.script_file}.ts").exists(),
             f"Script not found: {cfg.script_file}.ts",
+        ),
+        (
+            cfg.script_file not in SINGLE_RUNNER_SCRIPTS or cfg.parallelism == 1,
+            f"{cfg.script_file} requires PARALLELISM=1 (got {cfg.parallelism}): its abort "
+            + "threshold must be global, and the k6 Operator evaluates thresholds per runner",
         ),
     ]
     for ok, msg in checks:
@@ -38,11 +47,17 @@ def upload_configmap(cfg: Config) -> None:
             shutil.copy(ts, stage / ts.name)
         dry = subprocess.run(
             [
-                "kubectl", f"--context={cfg.context}",
-                "-n", cfg.namespace,
-                "create", "configmap", cfg.testrun,
+                "kubectl",
+                f"--context={cfg.context}",
+                "-n",
+                cfg.namespace,
+                "create",
+                "configmap",
+                cfg.testrun,
                 f"--from-file={stage}",
-                "--dry-run=client", "-o", "yaml",
+                "--dry-run=client",
+                "-o",
+                "yaml",
             ],
             text=True,
             capture_output=True,
@@ -57,7 +72,9 @@ def upload_configmap(cfg: Config) -> None:
         if apply.stdout:
             print(apply.stdout, end="")
         if apply.returncode != 0:
-            raise ConfigError(f"kubectl apply (configmap) failed:\n{apply.stderr.strip()}")
+            raise ConfigError(
+                f"kubectl apply (configmap) failed:\n{apply.stderr.strip()}"
+            )
     finally:
         shutil.rmtree(stage, ignore_errors=True)
     success(f"ConfigMap '{cfg.testrun}' ready")
@@ -70,7 +87,9 @@ def render_manifest(cfg: Config) -> str:
 
 def submit_testrun(cfg: Config) -> None:
     info(f"Submitting TestRun '{cfg.testrun}'...")
-    with NamedTemporaryFile(mode="w", suffix=".yaml", prefix="k6-testrun-", delete=False) as tmp:
+    with NamedTemporaryFile(
+        mode="w", suffix=".yaml", prefix="k6-testrun-", delete=False
+    ) as tmp:
         tmp.write(render_manifest(cfg))
         tmp_path = tmp.name
     try:
@@ -82,7 +101,9 @@ def submit_testrun(cfg: Config) -> None:
         if result.stdout:
             print(result.stdout, end="")
         if result.returncode != 0:
-            raise ConfigError(f"kubectl apply (testrun) failed:\n{result.stderr.strip()}")
+            raise ConfigError(
+                f"kubectl apply (testrun) failed:\n{result.stderr.strip()}"
+            )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
     success(f"TestRun '{cfg.testrun}' submitted")
@@ -91,7 +112,10 @@ def submit_testrun(cfg: Config) -> None:
 def main() -> None:
     args = argv[1:]
     if len(args) < 2:
-        print("Usage: python3 -m scripts.submit <base-id> <script> [<script> ...]", file=stderr)
+        print(
+            "Usage: python3 -m scripts.submit <base-id> <script> [<script> ...]",
+            file=stderr,
+        )
         exit(1)
 
     base_id = args[0]
@@ -100,7 +124,9 @@ def main() -> None:
 
     try:
         for script in scripts:
-            cfg = Config(testrun=testrun_id(base_id, script), script_file=script, smoke=smoke)
+            cfg = Config(
+                testrun=testrun_id(base_id, script), script_file=script, smoke=smoke
+            )
             validate(cfg)
             upload_configmap(cfg)
             submit_testrun(cfg)

@@ -15,8 +15,7 @@ def testrun_id(base_id: str, script: str) -> str:
 def _render_extra_env(extra: dict[str, str]) -> str:
     """Render plain key/value pairs as k8s env entries."""
     return "\n".join(
-        f"      - name: {k}\n        value: {json.dumps(v)}"
-        for k, v in extra.items()
+        f"      - name: {k}\n        value: {json.dumps(v)}" for k, v in extra.items()
     )
 
 
@@ -44,18 +43,51 @@ class Config:
     testrun: str
     script_file: str
     env: str = field(default_factory=lambda: environ.get("ENV", "staging"))
-    image: str = field(default_factory=lambda: environ.get("K6_IMAGE", "grafana/k6:2.0.0"))
-    namespace: str = field(default_factory=lambda: environ.get("K6_NAMESPACE", "k6-operator-system"))
-    scripts_dir: Path = field(default_factory=lambda: Path(environ.get("SCRIPTS_DIR", str(HERE / "k6"))))
+    image: str = field(
+        default_factory=lambda: environ.get("K6_IMAGE", "grafana/k6:2.0.0")
+    )
+    namespace: str = field(
+        default_factory=lambda: environ.get("K6_NAMESPACE", "k6-operator-system")
+    )
+    scripts_dir: Path = field(
+        default_factory=lambda: Path(environ.get("SCRIPTS_DIR", str(HERE / "k6")))
+    )
     target_rps: str = field(default_factory=lambda: environ.get("TARGET_RPS", "75"))
-    scenario_count: str = field(default_factory=lambda: environ.get("SCENARIO_COUNT", "5"))
-    sustained_duration: str = field(default_factory=lambda: environ.get("SUSTAINED_DURATION", "35m"))
-    parallelism: int = field(default_factory=lambda: int(environ.get("PARALLELISM", "1")))
+    scenario_count: str = field(
+        default_factory=lambda: environ.get("SCENARIO_COUNT", "5")
+    )
+    sustained_duration: str = field(
+        default_factory=lambda: environ.get("SUSTAINED_DURATION", "35m")
+    )
+    parallelism: int = field(
+        default_factory=lambda: int(environ.get("PARALLELISM", "1"))
+    )
     cleanup: str = field(default_factory=lambda: environ.get("K6_CLEANUP", "post"))
-    otel_endpoint: str = field(default_factory=lambda: environ.get("K6_OTEL_ENDPOINT", "signoz-otel-collector.signoz:4317"))
-    clickhouse_pod: str = field(default_factory=lambda: environ.get("CLICKHOUSE_POD", "chi-signoz-clickhouse-cluster-0-1-0"))
-    clickhouse_namespace: str = field(default_factory=lambda: environ.get("CLICKHOUSE_NAMESPACE", "signoz"))
-    reports_dir: Path = field(default_factory=lambda: Path(environ.get("REPORTS_DIR", str(HERE / "reports"))))
+    runner_cpu_request: str = field(
+        default_factory=lambda: environ.get("RUNNER_CPU_REQUEST", "")
+    )
+    runner_memory_request: str = field(
+        default_factory=lambda: environ.get("RUNNER_MEMORY_REQUEST", "")
+    )
+    runner_memory_limit: str = field(
+        default_factory=lambda: environ.get("RUNNER_MEMORY_LIMIT", "")
+    )
+    otel_endpoint: str = field(
+        default_factory=lambda: environ.get(
+            "K6_OTEL_ENDPOINT", "signoz-otel-collector.signoz:4317"
+        )
+    )
+    clickhouse_pod: str = field(
+        default_factory=lambda: environ.get(
+            "CLICKHOUSE_POD", "chi-signoz-clickhouse-cluster-0-1-0"
+        )
+    )
+    clickhouse_namespace: str = field(
+        default_factory=lambda: environ.get("CLICKHOUSE_NAMESPACE", "signoz")
+    )
+    reports_dir: Path = field(
+        default_factory=lambda: Path(environ.get("REPORTS_DIR", str(HERE / "reports")))
+    )
     extra_env: dict[str, str] = field(
         default_factory=lambda: json.loads(environ.get("K6_EXTRA_ENV", "{}"))
     )
@@ -84,6 +116,7 @@ class Config:
             "sustained_duration": self.sustained_duration,
             "parallelism": str(self.parallelism),
             "cleanup_block": self._cleanup_block(),
+            "resources_block": self._resources_block(),
             "env": self.env,
             "otel_service_name": self.prefix,
             "otel_endpoint": self.otel_endpoint,
@@ -107,3 +140,22 @@ class Config:
         if self.cleanup == "":
             return ""
         raise ConfigError("K6_CLEANUP must be 'post' or empty")
+
+    def _resources_block(self) -> str:
+        """Render runner `resources`; omitted entirely when no RUNNER_* var is set."""
+        requests = {
+            "cpu": self.runner_cpu_request,
+            "memory": self.runner_memory_request,
+        }
+        limits = {"memory": self.runner_memory_limit}
+        lines: list[str] = []
+        for section, values in (("requests", requests), ("limits", limits)):
+            present = {k: v for k, v in values.items() if v}
+            if present:
+                lines.append(f"      {section}:")
+                lines.extend(
+                    f"        {k}: {json.dumps(v)}" for k, v in present.items()
+                )
+        if not lines:
+            return ""
+        return "\n".join(["    resources:", *lines])
