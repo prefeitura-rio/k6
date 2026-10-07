@@ -129,7 +129,8 @@ just run app-mcp-server--miaw
 | `FILL_CONVERSATION_MINUTE` | `true` | `false` closes early and idles `SESSION_COOLDOWN_SECONDS` instead |
 | `SESSION_COOLDOWN_SECONDS` | `15` | Backoff after a failed conversation |
 | `CLOSE_CONVERSATION` | `true` | Close (`DELETE`) each conversation at the end |
-| `POLL_INTERVAL_SECONDS` / `MAX_POLL_TIMEOUT_SECONDS` | `1` / `60` | Agent-reply polling |
+| `POLL_INTERVAL_SECONDS` / `MAX_POLL_TIMEOUT_SECONDS` | `5` / `60` | Agent-reply polling; 1s triggers `429` on the entries endpoint |
+| `AGENT_P95_MS` / `CLOSING_TURN_P95_MS` | `30000` / `60000` | Agent-reply p95 per turn; the last (closing) turn uses the second |
 | `MAX_RETRIES` | `3` | Retries for token/create/close on 429/5xx |
 | `RETRY_BASE_BACKOFF_SECONDS` / `RETRY_MAX_BACKOFF_SECONDS` | `2` / `30` | Exponential backoff bounds |
 | `STARTUP_JITTER_SECONDS` | `20` | Random delay before a VU's first iteration (ignored in smoke) |
@@ -138,7 +139,7 @@ just run app-mcp-server--miaw
 Outside smoke mode the run aborts when more than 10% of requests fail for 30s; the pass/fail
 thresholds are `http_req_failed < 1%` and turn completion, Agentforce success and conversation
 completion above 90% (provisional, pending confirmation with the client), with agent-reply p95
-under 30s. The k6 Operator evaluates thresholds per
+per turn under 30s, except the closing turn (under 60s). The k6 Operator evaluates thresholds per
 runner pod, so `just run` rejects this script unless `PARALLELISM=1`. When a conversation create
 fails, the script makes a best-effort cleanup `DELETE` tagged `service=miaw_setup`,
 `phase=cleanup`; it only feeds the `miaw_orphan_cleanup` counter and is left out of thresholds
@@ -147,8 +148,9 @@ built-in HTTP metrics of `service=miaw`.
 
 Operational constraints for MIAW runs:
 
-- Run between 09:00 and 18:00 America/Sao_Paulo, Monday to Saturday. Outside that window the
-  channel answers `412` to every conversation create, so the run only exercises the failure path.
+- Against the sandbox, run between 09:00 and 18:00 America/Sao_Paulo, Monday to Saturday.
+  Outside that window the sandbox channel answers `412` to every conversation create, so the run
+  only exercises the failure path. Production has no such window.
 - Wait about 30 minutes between runs against the same org: the platform drains its active-session
   counter slowly, and a run started too soon inherits the previous run's sessions.
 - 2,500 VUs fit in one runner with the resources above. The cluster autoscaler may add a node for

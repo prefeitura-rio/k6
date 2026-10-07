@@ -51,7 +51,9 @@ const DEPLOYMENT_NAME = __ENV["MIAW_DEPLOYMENT_NAME"] ?? "API_Chat_Agentforce_Pr
 const CONCURRENT_VUS = Number(__ENV["CONCURRENT_VUS"] ?? "1");
 const RAMP_DURATION = __ENV["RAMP_DURATION"] ?? "5m";
 const HOLD_DURATION = __ENV["HOLD_DURATION"] ?? "10m";
-const POLL_INTERVAL_SECONDS = Number(__ENV["POLL_INTERVAL_SECONDS"] ?? "1");
+// 1s polling triggers 429 on the entries endpoint even for a single conversation;
+// 3s did not with 5 VUs in prod. 5s keeps the reply-time error under 5s.
+const POLL_INTERVAL_SECONDS = Number(__ENV["POLL_INTERVAL_SECONDS"] ?? "5");
 const MAX_POLL_TIMEOUT_SECONDS = Number(__ENV["MAX_POLL_TIMEOUT_SECONDS"] ?? "60");
 // Must satisfy STRIDE * maxVUs <= MAX_UNIQUE_PHONES so the modulo in
 // getUniquePhoneNumber never wraps (a wrap re-collides VU N with VU N+MAX/STRIDE).
@@ -120,6 +122,22 @@ const NO_ACTION_MESSAGES: string[] = (() => {
     }
     return DEFAULT_MESSAGES;
 })();
+
+// Agent reply p95 per turn. The closing (last) turn triggers the session-end flow
+// and is much slower (prod, 5 VUs: ~34s avg vs 8–13s for the others), so a single
+// p95 would always fail on it rather than on real degradation.
+const AGENT_P95_MS = Number(__ENV["AGENT_P95_MS"] ?? "30000");
+const CLOSING_TURN_P95_MS = Number(__ENV["CLOSING_TURN_P95_MS"] ?? "60000");
+
+function agentResponseThresholds(): Record<string, string[]> {
+    const thresholds: Record<string, string[]> = {};
+    const turns = NO_ACTION_MESSAGES.length;
+    for (let turn = 1; turn <= turns; turn += 1) {
+        const p95 = turn === turns && turns > 1 ? CLOSING_TURN_P95_MS : AGENT_P95_MS;
+        thresholds[`miaw_agent_response_duration{turn:${turn}}`] = [`p(95)<${p95}`];
+    }
+    return thresholds;
+}
 
 export const tokenDuration = new Trend("miaw_token_duration", true);
 export const conversationCreateDuration = new Trend("miaw_conversation_create_duration", true);
@@ -225,19 +243,18 @@ function buildLoadScenario(): Record<string, unknown> {
 
 export const options = {
     scenarios: {
-        miaw: SMOKE
-            ? {
-                  executor: "per-vu-iterations",
-                  vus: 1,
-                  iterations: 1,
-                  exec: "default",
-              }
-            : buildLoadScenario(),
+        miaw: {
+            ...(SMOKE
+                ? { executor: "per-vu-iterations", vus: 1, iterations: 1, exec: "default" }
+                : buildLoadScenario()),
+            // Every request is part of the measured journey (phase=main) except the
+            // orphan cleanup close, which overrides it with phase=cleanup so thresholds
+            // ignore it. Set on the scenario, not options.tags: the harness passes
+            // `--tag testrun=...`, and CLI tags REPLACE options.tags entirely.
+            tags: { phase: "main" },
+        },
     },
     systemTags: SYSTEM_TAGS,
-    // Every request is part of the measured journey (phase=main) except the orphan
-    // cleanup close, which overrides it with phase=cleanup so thresholds ignore it.
-    tags: { phase: "main" },
     thresholds: SMOKE
         ? {}
         : {
@@ -249,7 +266,7 @@ export const options = {
                   { threshold: "rate<0.10", abortOnFail: true, delayAbortEval: "30s" },
               ],
               miaw_turn_completed: ["rate>0.90"],
-              miaw_agent_response_duration: ["p(95)<30000"],
+              ...agentResponseThresholds(),
               // Gate on REAL agent success, not just transport: without these a
               // 100%-fallback run passes every other threshold.
               miaw_agentforce_success_rate: ["rate>0.90"],
@@ -617,6 +634,14 @@ function sendMessageAndPollResponse(
     }
 
     check(agentReplied, { "Agent replied to turn": (value) => value === true });
+    if (!agentReplied) {
+        // Some turns never get a reply at all (~8% of turn 2 in prod, even after
+        // 180s): log the conversation so it can be looked up on the Salesforce side.
+        console.warn(
+            `MIAW no agent reply: conversation=${conversationId} turn=${turnNumber} ` +
+                `waited=${MAX_POLL_TIMEOUT_SECONDS}s`,
+        );
+    }
     // FIX 7 — poll timed out with no reply at all: record the turn as a failed
     // attempt. Guarded by !agentReplied so a turn that already added a sample above
     // is never double-counted.
