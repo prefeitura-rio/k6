@@ -133,6 +133,7 @@ just run app-mcp-server--miaw
 | `AGENT_P95_MS` / `CLOSING_TURN_P95_MS` | `30000` / `60000` | Agent-reply p95 per turn; the last (closing) turn uses the second |
 | `MAX_RETRIES` | `3` | Retries for token/create/close on 429/5xx |
 | `RETRY_BASE_BACKOFF_SECONDS` / `RETRY_MAX_BACKOFF_SECONDS` | `2` / `30` | Exponential backoff bounds |
+| `GRACEFUL_STOP` | derived (`270s` with defaults) | Time an in-flight conversation gets to finish and close when its VU is removed (ramp-down) or the test ends; derived from the turn count and poll timeouts |
 | `STARTUP_JITTER_SECONDS` | `20` | Random delay before a VU's first iteration (ignored in smoke) |
 | `MIAW_MAX_UNIQUE_PHONES` | `1000000000` | Phone-number space for unique per-(VU, iteration) numbers |
 

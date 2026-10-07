@@ -129,6 +129,25 @@ const NO_ACTION_MESSAGES: string[] = (() => {
 const AGENT_P95_MS = Number(__ENV["AGENT_P95_MS"] ?? "30000");
 const CLOSING_TURN_P95_MS = Number(__ENV["CLOSING_TURN_P95_MS"] ?? "60000");
 
+// Graceful margin for VUs removed during ramp-down (and at the end of the test):
+// long enough for an in-flight conversation to finish within its own limits and
+// run its closing DELETE, instead of being interrupted with the session left open.
+// Worst case per turn = reply timeout + one poll interval + the poll request
+// timeout (15s); turns start at fixed slots, so the bound is (turns-1) slots of
+// max(interval, turn) plus the last turn, plus the close request timeout (30s).
+// k6 stops as soon as in-flight iterations end, so this only costs time when a
+// conversation really is that slow. Override with GRACEFUL_STOP (e.g. "120s").
+const WORST_TURN_SECONDS = MAX_POLL_TIMEOUT_SECONDS + POLL_INTERVAL_SECONDS + 15;
+const GRACEFUL_STOP =
+    __ENV["GRACEFUL_STOP"] ??
+    `${Math.ceil(
+        Math.max(
+            CONVERSATION_WINDOW_SECONDS,
+            (NO_ACTION_MESSAGES.length - 1) * Math.max(TURN_INTERVAL_SECONDS, WORST_TURN_SECONDS) +
+                WORST_TURN_SECONDS,
+        ) + 30,
+    )}s`;
+
 function agentResponseThresholds(): Record<string, string[]> {
     const thresholds: Record<string, string[]> = {};
     const turns = NO_ACTION_MESSAGES.length;
@@ -225,7 +244,7 @@ function buildLoadScenario(): Record<string, unknown> {
             preAllocatedVUs: ARRIVAL_PREALLOC_VUS,
             maxVUs: ARRIVAL_MAX_VUS,
             stages,
-            gracefulStop: "30s",
+            gracefulStop: GRACEFUL_STOP,
             exec: "default",
         };
     }
@@ -235,8 +254,8 @@ function buildLoadScenario(): Record<string, unknown> {
         executor: "ramping-vus",
         startVUs: 0,
         stages,
-        gracefulRampDown: "30s",
-        gracefulStop: "30s",
+        gracefulRampDown: GRACEFUL_STOP,
+        gracefulStop: GRACEFUL_STOP,
         exec: "default",
     };
 }
